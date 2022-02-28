@@ -1,6 +1,9 @@
 # mono-external-lib
 mono fully external lib
 
+credits:
+- hst/chloe for the fix of the obfuscated names
+
 Example Usage:
 ```c
 
