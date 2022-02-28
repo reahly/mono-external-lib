@@ -1,6 +1,7 @@
 #pragma once
-#include "../utils/utils.hh"
-#include "structs.hh"
+#include <Windows.h>
+
+#define OFFSET(func, type, offset) type func { return read<type>( reinterpret_cast<uintptr_t>( this ) + offset ); }  // NOLINT
 
 struct glist_t {
 	OFFSET( data( ), uintptr_t, 0x0 )
@@ -13,13 +14,13 @@ struct mono_root_domain_t {
 
 struct mono_table_info_t {
 	int get_rows( ) {
-		return utils::globals::driver.read<int>( reinterpret_cast<uintptr_t>( this ) + 0x8 ) & 0xFFFFFF;
+		return read<int>( reinterpret_cast<uintptr_t>( this ) + 0x8 ) & 0xFFFFFF;
 	}
 };
 
 struct mono_method_t {
 	std::string name( ) {
-		auto name = utils::globals::driver.read_widechar( utils::globals::driver.read<uintptr_t>( reinterpret_cast<uintptr_t>( this ) + 0x18 ), 128 );
+		auto name = read_widechar( read<uintptr_t>( reinterpret_cast<uintptr_t>( this ) + 0x18 ), 128 );
 		if ( static_cast<std::uint8_t>( name[0] ) == 0xEE ) {
 			char name_buff[ 32 ];
 			sprintf_s( name_buff, 32, _( "\\u%04X" ), utils::utf8_to_utf16( const_cast<char*>( name.c_str( ) ) ) );
@@ -34,7 +35,7 @@ struct mono_class_field_t {
 	OFFSET( offset( ), int, 0x18 )
 
 	std::string name( ) {
-		auto name = utils::globals::driver.read_widechar( utils::globals::driver.read<uintptr_t>( reinterpret_cast<uintptr_t>( this ) + 0x8 ), 128 );
+		auto name = read_widechar( read<uintptr_t>( reinterpret_cast<uintptr_t>( this ) + 0x8 ), 128 );
 		if ( static_cast<std::uint8_t>( name[0] ) == 0xEE ) {
 			char name_buff[ 32 ];
 			sprintf_s( name_buff, 32, _( "\\u%04X" ), utils::utf8_to_utf16( const_cast<char*>( name.c_str( ) ) ) );
@@ -49,7 +50,7 @@ struct mono_class_t {
 	OFFSET( num_fields( ), int, 0x100 )
 
 	std::string name( ) {
-		auto name = utils::globals::driver.read_widechar( utils::globals::driver.read<uintptr_t>( reinterpret_cast<uintptr_t>( this ) + 0x48 ), 128 );
+		auto name = read_widechar( read<uintptr_t>( reinterpret_cast<uintptr_t>( this ) + 0x48 ), 128 );
 		if ( static_cast<std::uint8_t>( name[0] ) == 0xEE ) {
 			char name_buff[ 32 ];
 			sprintf_s( name_buff, 32, _( "\\u%04X" ), utils::utf8_to_utf16( const_cast<char*>( name.c_str( ) ) ) );
@@ -60,18 +61,18 @@ struct mono_class_t {
 	}
 
 	int get_num_methods( ) {
-		const auto v2 = ( utils::globals::driver.read<int>( reinterpret_cast<uintptr_t>( this ) + 0x2a ) & 7 ) - 1;
+		const auto v2 = ( read<int>( reinterpret_cast<uintptr_t>( this ) + 0x2a ) & 7 ) - 1;
 		switch ( v2 ) {
 		case 0:
 		case 1:
-			return utils::globals::driver.read<int>( reinterpret_cast<uintptr_t>( this ) + 0xFC );
+			return read<int>( reinterpret_cast<uintptr_t>( this ) + 0xFC );
 
 		case 3:
 		case 5:
 			return 0;
 
 		case 4u:
-			return utils::globals::driver.read<int>( reinterpret_cast<uintptr_t>( this ) + 0xF0 );
+			return read<int>( reinterpret_cast<uintptr_t>( this ) + 0xF0 );
 
 		default: break;
 		}
@@ -80,11 +81,11 @@ struct mono_class_t {
 	}
 
 	mono_method_t* get_method( const int i ) {
-		return reinterpret_cast<mono_method_t*>( utils::globals::driver.read<uintptr_t>( utils::globals::driver.read<uintptr_t>( reinterpret_cast<uintptr_t>( this ) + 0xA0 ) + 0x8 * i ) );
+		return reinterpret_cast<mono_method_t*>( read<uintptr_t>( read<uintptr_t>( reinterpret_cast<uintptr_t>( this ) + 0xA0 ) + 0x8 * i ) );
 	}
 
 	mono_class_field_t* get_field( const int i ) {
-		return reinterpret_cast<mono_class_field_t*>( utils::globals::driver.read<uintptr_t>( reinterpret_cast<uintptr_t>( this ) + 0x98 ) + 0x20 * i );
+		return reinterpret_cast<mono_class_field_t*>( read<uintptr_t>( reinterpret_cast<uintptr_t>( this ) + 0x98 ) + 0x20 * i );
 	}
 
 	mono_method_t* find_method( const char* method_name ) {
@@ -122,7 +123,7 @@ struct mono_hash_table_t {
 
 	template<typename T>
 	T* lookup( void* key ) {
-		auto v4 = static_cast<mono_hash_table_t*>( utils::globals::driver.read<void*>( data( ) + 0x8 * ( reinterpret_cast<unsigned int>( key ) % this->size( ) ) ) );
+		auto v4 = static_cast<mono_hash_table_t*>( read<void*>( data( ) + 0x8 * ( reinterpret_cast<unsigned int>( key ) % this->size( ) ) ) );
 		if ( !v4 )
 			return nullptr;
 
@@ -183,7 +184,7 @@ struct mono_assembly_t {
 
 namespace mono {
 	inline mono_root_domain_t* get_root_domain( ) {
-		return reinterpret_cast<mono_root_domain_t*>( utils::globals::driver.read<uintptr_t>( utils::globals::mono + 0x499c78 ) );
+		return reinterpret_cast<mono_root_domain_t*>( read<uintptr_t>( mono_module /* module handle of mono-2.0-bdwgc.dll */ + 0x499c78 ) );
 	}
 
 	inline mono_assembly_t* domain_assembly_open( mono_root_domain_t* domain, const char* name ) {
@@ -197,7 +198,7 @@ namespace mono {
 			if ( !data )
 				continue;
 
-			const auto data_name = utils::globals::driver.read_widechar( utils::globals::driver.read<uintptr_t>( data + 0x10 ), 128 );
+			const auto data_name = read_widechar( read<uintptr_t>( data + 0x10 ), 128 );
 			if ( !strcmp( data_name.c_str( ), name ) )
 				break;
 
