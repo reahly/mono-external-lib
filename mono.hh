@@ -21,9 +21,9 @@ struct mono_table_info_t {
 struct mono_method_t {
 	std::string name( ) {
 		auto name = read_widechar( read<uintptr_t>( reinterpret_cast<uintptr_t>( this ) + 0x18 ), 128 );
-		if ( static_cast<std::uint8_t>( name[0] ) == 0xEE ) {
+		if ( static_cast<std::uint8_t>( name[0] ) == 0xEE ) { // https://github.com/cheat-engine/cheat-engine/blob/8bdb7f28a9d40ccaa6f4116b13c570907ce9ee2e/Cheat%20Engine/MonoDataCollector/MonoDataCollector/PipeServer.cpp#L896
 			char name_buff[ 32 ];
-			sprintf_s( name_buff, 32, _( "\\u%04X" ), utils::utf8_to_utf16( const_cast<char*>( name.c_str( ) ) ) );
+			sprintf_s( name_buff, 32, "\\u%04X", utf8_to_utf16( const_cast<char*>( name.c_str( ) ) ) );
 			name = name_buff;
 		}
 
@@ -36,9 +36,9 @@ struct mono_class_field_t {
 
 	std::string name( ) {
 		auto name = read_widechar( read<uintptr_t>( reinterpret_cast<uintptr_t>( this ) + 0x8 ), 128 );
-		if ( static_cast<std::uint8_t>( name[0] ) == 0xEE ) {
+		if ( static_cast<std::uint8_t>( name[0] ) == 0xEE ) { // https://github.com/cheat-engine/cheat-engine/blob/8bdb7f28a9d40ccaa6f4116b13c570907ce9ee2e/Cheat%20Engine/MonoDataCollector/MonoDataCollector/PipeServer.cpp#L896
 			char name_buff[ 32 ];
-			sprintf_s( name_buff, 32, _( "\\u%04X" ), utils::utf8_to_utf16( const_cast<char*>( name.c_str( ) ) ) );
+			sprintf_s( name_buff, 32, "\\u%04X", utf8_to_utf16( const_cast<char*>( name.c_str( ) ) ) );
 			name = name_buff;
 		}
 
@@ -51,9 +51,9 @@ struct mono_class_t {
 
 	std::string name( ) {
 		auto name = read_widechar( read<uintptr_t>( reinterpret_cast<uintptr_t>( this ) + 0x48 ), 128 );
-		if ( static_cast<std::uint8_t>( name[0] ) == 0xEE ) {
+		if ( static_cast<std::uint8_t>( name[0] ) == 0xEE ) { // https://github.com/cheat-engine/cheat-engine/blob/8bdb7f28a9d40ccaa6f4116b13c570907ce9ee2e/Cheat%20Engine/MonoDataCollector/MonoDataCollector/PipeServer.cpp#L896
 			char name_buff[ 32 ];
-			sprintf_s( name_buff, 32, _( "\\u%04X" ), utils::utf8_to_utf16( const_cast<char*>( name.c_str( ) ) ) );
+			sprintf_s( name_buff, 32, "\\u%04X", utf8_to_utf16( const_cast<char*>( name.c_str( ) ) ) );
 			name = name_buff;
 		}
 
