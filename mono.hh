@@ -215,11 +215,11 @@ namespace mono {
 		if ( !root_domain )
 			return nullptr;
 
-		const auto assembly_csharp_mono = domain_assembly_open( root_domain, assembly_name );
-		if ( !assembly_csharp_mono )
+		const auto domain_assembly = domain_assembly_open( root_domain, assembly_name );
+		if ( !domain_assembly )
 			return nullptr;
 
-		const auto img = assembly_csharp_mono->mono_image( );
+		const auto img = domain_assembly->mono_image( );
 		if ( !img )
 			return nullptr;
 
