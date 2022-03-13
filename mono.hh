@@ -59,6 +59,17 @@ struct mono_class_t {
 
 		return name;
 	}
+	
+	std::string namespace_name( ) {
+		auto name = utils::globals::driver.read_widechar( utils::globals::driver.read<uintptr_t>( reinterpret_cast<uintptr_t>( this ) + 0x50 ), 128 );
+		if ( static_cast<std::uint8_t>( name[0] ) == 0xEE ) {
+			char name_buff[32];
+			sprintf_s( name_buff, 32, _( "\\u%04X" ), utils::utf8_to_utf16( const_cast<char*>( name.c_str( ) ) ) );
+			name = name_buff;
+		}
+
+		return name;
+	}
 
 	int get_num_methods( ) {
 		const auto v2 = ( read<int>( reinterpret_cast<uintptr_t>( this ) + 0x2a ) & 7 ) - 1;
@@ -219,20 +230,24 @@ namespace mono {
 		if ( !domain_assembly )
 			return nullptr;
 
-		const auto img = domain_assembly->mono_image( );
-		if ( !img )
+		const auto mono_image = domain_assembly->mono_image( );
+		if ( !mono_image )
 			return nullptr;
 
-		const auto type_def = img->get_table_info( 2 );
-		if ( !type_def )
+		const auto table_info = mono_image->get_table_info( 2 );
+		if ( !table_info )
 			return nullptr;
 
-		for ( int i = 0; i < type_def->get_rows( ); i++ ) {
-			const auto ptr = static_cast<mono_hash_table_t*>( reinterpret_cast<void*>( img + 0x4C0 ) )->lookup<mono_class_t>( reinterpret_cast<void*>( 0x02000000 | i + 1 ) );
+		for ( int i = 0; i < table_info->get_rows( ); i++ ) {
+			const auto ptr = static_cast<mono_hash_table_t*>( reinterpret_cast<void*>( mono_image + 0x4C0 ) )->lookup<mono_class_t>( reinterpret_cast<void*>( 0x02000000 | i + 1 ) );
 			if ( !ptr )
 				continue;
+			
+			auto name = ptr->name( );
+			if ( !ptr->namespace_name( ).empty( ) )
+				name = ptr->namespace_name( ).append( "." ).append( ptr->name( ) );
 
-			if ( !strcmp( ptr->name( ).c_str( ), class_name ) )
+			if ( !strcmp( name.c_str( ), class_name ) )
 				return ptr;
 		}
 
