@@ -10,6 +10,7 @@ struct glist_t {
 
 struct mono_root_domain_t {
 	OFFSET( domain_assemblies( ), glist_t*, 0xC8 )
+	OFFSET( domain_id( ), int, 0xBC )
 };
 
 struct mono_table_info_t {
@@ -46,8 +47,24 @@ struct mono_class_field_t {
 	}
 };
 
+struct mono_class_runtime_info_t {
+	OFFSET( max_domain( ), int, 0x0 )
+};
+
+struct mono_vtable_t {
+	OFFSET( flags( ), byte, 0x30 )
+
+	uintptr_t get_static_field_data( ) {
+		if ( ( this->flags( ) & 4 ) != 0 )
+			return utils::globals::driver.read<uintptr_t>( reinterpret_cast<uintptr_t>( this ) + 0x40 + 8 * utils::globals::driver.read<int>( utils::globals::driver.read<uintptr_t>( reinterpret_cast<uintptr_t>( this ) + 0x0 ) + 0x5c ) );
+
+		return 0;
+	}
+};
+
 struct mono_class_t {
 	OFFSET( num_fields( ), int, 0x100 )
+	OFFSET( runtime_info( ), mono_class_runtime_info_t*, 0xd0 )
 
 	std::string name( ) {
 		auto name = read_widechar( read<uintptr_t>( reinterpret_cast<uintptr_t>( this ) + 0x48 ), 128 );
@@ -97,6 +114,18 @@ struct mono_class_t {
 
 	mono_class_field_t* get_field( const int i ) {
 		return reinterpret_cast<mono_class_field_t*>( read<uintptr_t>( reinterpret_cast<uintptr_t>( this ) + 0x98 ) + 0x20 * i );
+	}
+	
+	mono_vtable_t* get_vtable( mono_root_domain_t* domain ) {
+		const auto runtime_info = this->runtime_info( );
+		if ( !runtime_info )
+			return nullptr;
+
+		const auto domain_id = domain->domain_id( );
+		if ( runtime_info->max_domain( ) < domain_id )
+			return nullptr;
+
+		return reinterpret_cast<mono_vtable_t*>( utils::globals::driver.read<uintptr_t>( reinterpret_cast<uintptr_t>( runtime_info ) + 8 * domain_id + 8 ) );
 	}
 
 	mono_method_t* find_method( const char* method_name ) {
