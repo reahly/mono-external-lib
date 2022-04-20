@@ -1,7 +1,20 @@
 #pragma once
 #include <Windows.h>
+#include <codecvt>
 
-#define OFFSET(func, type, offset) type func { return read<type>( reinterpret_cast<uintptr_t>( this ) + offset ); }  // NOLINT
+#define OFFSET(func, type, offset) type func { return read<type>( reinterpret_cast<uintptr_t>( this ) + offset ); } 
+
+inline unsigned short utf8_to_utf16( const char* val ) {
+	std::wstring_convert<std::codecvt_utf8_utf16<char16_t>, char16_t> convert;
+	std::u16string dest = convert.from_bytes( val );
+	return *reinterpret_cast<unsigned short*>( &dest[0] );
+}
+
+inline std::string read_widechar( const std::uintptr_t address, const std::size_t size ) {
+	const auto buffer = std::make_unique<char[]>( size );
+	raw_read( address, buffer.get( ), size );
+	return std::string( buffer.get( ) );
+}
 
 struct glist_t {
 	OFFSET( data( ), uintptr_t, 0x0 )
@@ -37,7 +50,7 @@ struct mono_class_field_t {
 
 	std::string name( ) {
 		auto name = read_widechar( read<uintptr_t>( reinterpret_cast<uintptr_t>( this ) + 0x8 ), 128 );
-		if ( static_cast<std::uint8_t>( name[0] ) == 0xEE ) { // https://github.com/cheat-engine/cheat-engine/blob/8bdb7f28a9d40ccaa6f4116b13c570907ce9ee2e/Cheat%20Engine/MonoDataCollector/MonoDataCollector/PipeServer.cpp#L896
+		if ( static_cast<std::uint8_t>( name[0] ) == 0xEE ) {
 			char name_buff[ 32 ];
 			sprintf_s( name_buff, 32, "\\u%04X", utf8_to_utf16( const_cast<char*>( name.c_str( ) ) ) );
 			name = name_buff;
@@ -56,7 +69,7 @@ struct mono_vtable_t {
 
 	uintptr_t get_static_field_data( ) {
 		if ( ( this->flags( ) & 4 ) != 0 )
-			return utils::globals::driver.read<uintptr_t>( reinterpret_cast<uintptr_t>( this ) + 0x40 + 8 * utils::globals::driver.read<int>( utils::globals::driver.read<uintptr_t>( reinterpret_cast<uintptr_t>( this ) + 0x0 ) + 0x5c ) );
+			return read<uintptr_t>( reinterpret_cast<uintptr_t>( this ) + 0x40 + 8 * read<int>( read<uintptr_t>( reinterpret_cast<uintptr_t>( this ) + 0x0 ) + 0x5c ) );
 
 		return 0;
 	}
@@ -68,7 +81,7 @@ struct mono_class_t {
 
 	std::string name( ) {
 		auto name = read_widechar( read<uintptr_t>( reinterpret_cast<uintptr_t>( this ) + 0x48 ), 128 );
-		if ( static_cast<std::uint8_t>( name[0] ) == 0xEE ) { // https://github.com/cheat-engine/cheat-engine/blob/8bdb7f28a9d40ccaa6f4116b13c570907ce9ee2e/Cheat%20Engine/MonoDataCollector/MonoDataCollector/PipeServer.cpp#L896
+		if ( static_cast<std::uint8_t>( name[0] ) == 0xEE ) {
 			char name_buff[ 32 ];
 			sprintf_s( name_buff, 32, "\\u%04X", utf8_to_utf16( const_cast<char*>( name.c_str( ) ) ) );
 			name = name_buff;
@@ -78,10 +91,10 @@ struct mono_class_t {
 	}
 	
 	std::string namespace_name( ) {
-		auto name = utils::globals::driver.read_widechar( utils::globals::driver.read<uintptr_t>( reinterpret_cast<uintptr_t>( this ) + 0x50 ), 128 );
+		auto name = read_widechar( read<uintptr_t>( reinterpret_cast<uintptr_t>( this ) + 0x50 ), 128 );
 		if ( static_cast<std::uint8_t>( name[0] ) == 0xEE ) {
 			char name_buff[32];
-			sprintf_s( name_buff, 32, _( "\\u%04X" ), utils::utf8_to_utf16( const_cast<char*>( name.c_str( ) ) ) );
+			sprintf_s( name_buff, 32, _( "\\u%04X" ), utf8_to_utf16( const_cast<char*>( name.c_str( ) ) ) );
 			name = name_buff;
 		}
 
@@ -125,7 +138,7 @@ struct mono_class_t {
 		if ( runtime_info->max_domain( ) < domain_id )
 			return nullptr;
 
-		return reinterpret_cast<mono_vtable_t*>( utils::globals::driver.read<uintptr_t>( reinterpret_cast<uintptr_t>( runtime_info ) + 8 * domain_id + 8 ) );
+		return reinterpret_cast<mono_vtable_t*>( read<uintptr_t>( reinterpret_cast<uintptr_t>( runtime_info ) + 8 * domain_id + 8 ) );
 	}
 
 	mono_method_t* find_method( const char* method_name ) {
@@ -188,33 +201,13 @@ struct mono_image_t {
 	}
 
 	mono_class_t* get( const int type_id ) {
-		if ( ( this->flags( ) & 0x20 ) != 0 ) {
-			//TODO, not found anything that leads here yet
+		if ( ( this->flags( ) & 0x20 ) != 0 )
 			return nullptr;
-		}
 
-		mono_class_t* ret = nullptr;
-
-		const auto v10 = type_id & 0xFF000000;
-		switch ( v10 ) {
-		case 0x1000000:
-			//TODO, not found anything that leads here yet
-			break;
-
-		case 0x2000000: {
-			ret = reinterpret_cast<mono_hash_table_t*>( this + 0x4C0 )->lookup<mono_class_t>( reinterpret_cast<void*>( type_id ) );
-			break;
-		}
-
-		case 0x1B000000:
-			//TODO, not found anything that leads here yet
-			break;
-
-		default:
-			break;
-		}
-
-		return ret;
+		if ( ( type_id & 0xFF000000 ) != 0x2000000 )
+			return nullptr;
+		   
+		return reinterpret_cast<mono_hash_table_t*>( this + 0x4C0 )->lookup<mono_class_t>( reinterpret_cast<void*>( type_id ) );
 	}
 };
 
