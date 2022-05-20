@@ -225,7 +225,7 @@ namespace mono {
 		return reinterpret_cast<mono_root_domain_t*>( read<uintptr_t>( mono_module /* module handle of mono-2.0-bdwgc.dll */ + 0x499c78 ) );
 	}
 	
-	inline bool init_functions( ) { // credits: niceone1 (https://www.unknowncheats.me/forum/3434741-post11.html)
+	inline void init_functions( ) { // credits: niceone1 (https://www.unknowncheats.me/forum/3434741-post11.html)
 		const auto jitted_table = get_root_domain( )->jitted_function_table( );
 		for ( auto i = 0; i < read<int>( jitted_table + 0x8 ); i++  ) {
 			const auto entry = read<uintptr_t>( jitted_table + 0x10 + i * 0x8 );
@@ -242,8 +242,6 @@ namespace mono {
 				functions[mono_ptr] = jitted_ptr;
 			}
 		}
-
-		return true;
 	}
 
 	inline mono_assembly_t* domain_assembly_open( mono_root_domain_t* domain, const char* name ) {
