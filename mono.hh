@@ -1,8 +1,11 @@
 #pragma once
 #include <Windows.h>
 #include <codecvt>
+#include <unordered_map>
 
 #define OFFSET(func, type, offset) type func { return read<type>( reinterpret_cast<uintptr_t>( this ) + offset ); } 
+
+inline std::unordered_map<uintptr_t, uintptr_t> functions;
 
 inline unsigned short utf8_to_utf16( const char* val ) {
 	std::wstring_convert<std::codecvt_utf8_utf16<char16_t>, char16_t> convert;
@@ -24,6 +27,7 @@ struct glist_t {
 struct mono_root_domain_t {
 	OFFSET( domain_assemblies( ), glist_t*, 0xC8 )
 	OFFSET( domain_id( ), int, 0xBC )
+	OFFSET( jitted_function_table( ), uintptr_t, 0x148 )
 };
 
 struct mono_table_info_t {
@@ -142,16 +146,17 @@ struct mono_class_t {
 	}
 
 	mono_method_t* find_method( const char* method_name ) {
+		auto mono_ptr = uintptr_t( );
 		for ( auto i = 0; i < this->get_num_methods( ); i++ ) {
 			const auto method = this->get_method( i );
 			if ( !method )
 				continue;
 
 			if ( !strcmp( method->name( ).c_str( ), method_name ) )
-				return method;
+				mono_ptr = reinterpret_cast<uintptr_t>( method );
 		}
 
-		return nullptr;
+		return reinterpret_cast<mono_method_t*>( functions[mono_ptr] );
 	}
 
 	mono_class_field_t* find_field( const char* field_name ) {
@@ -218,6 +223,27 @@ struct mono_assembly_t {
 namespace mono {
 	inline mono_root_domain_t* get_root_domain( ) {
 		return reinterpret_cast<mono_root_domain_t*>( read<uintptr_t>( mono_module /* module handle of mono-2.0-bdwgc.dll */ + 0x499c78 ) );
+	}
+	
+	inline bool init_functions( ) { // credits: niceone1 (https://www.unknowncheats.me/forum/3434741-post11.html)
+		const auto jitted_table = get_root_domain( )->jitted_function_table( );
+		for ( auto i = 0; i < utils::globals::driver.read<int>( jitted_table + 0x8 ); i++  ) {
+			const auto entry = utils::globals::driver.read<uintptr_t>( jitted_table + 0x10 + i * 0x8 );
+			if ( !entry )
+				continue;
+
+			for ( auto j = 0; j < utils::globals::driver.read<int>( entry + 0x4 ); j++ ) {
+				const auto function = utils::globals::driver.read<uintptr_t>( entry + 0x18 + j * 0x8 );
+				if ( !function )
+					continue;
+
+				const auto mono_ptr = utils::globals::driver.read<uintptr_t>( function + 0x0 );
+				const auto jitted_ptr = utils::globals::driver.read<uintptr_t>( function + 0x10 );
+				functions[mono_ptr] = jitted_ptr;
+			}
+		}
+
+		return true;
 	}
 
 	inline mono_assembly_t* domain_assembly_open( mono_root_domain_t* domain, const char* name ) {
