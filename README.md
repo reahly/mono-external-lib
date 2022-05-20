@@ -3,6 +3,8 @@
 Example Usage:
 ```c
 
+mono::init_functions( );
+
 static auto trader_tooltip = mono::find_class( "Assembly-CSharp", "EFT.UI.TraderTooltip" );
 
 const auto nickname_field = trader_tooltip->find_field( "_nickname" );
