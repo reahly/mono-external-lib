@@ -227,18 +227,18 @@ namespace mono {
 	
 	inline bool init_functions( ) { // credits: niceone1 (https://www.unknowncheats.me/forum/3434741-post11.html)
 		const auto jitted_table = get_root_domain( )->jitted_function_table( );
-		for ( auto i = 0; i < utils::globals::driver.read<int>( jitted_table + 0x8 ); i++  ) {
-			const auto entry = utils::globals::driver.read<uintptr_t>( jitted_table + 0x10 + i * 0x8 );
+		for ( auto i = 0; i < read<int>( jitted_table + 0x8 ); i++  ) {
+			const auto entry = read<uintptr_t>( jitted_table + 0x10 + i * 0x8 );
 			if ( !entry )
 				continue;
 
-			for ( auto j = 0; j < utils::globals::driver.read<int>( entry + 0x4 ); j++ ) {
-				const auto function = utils::globals::driver.read<uintptr_t>( entry + 0x18 + j * 0x8 );
+			for ( auto j = 0; j < read<int>( entry + 0x4 ); j++ ) {
+				const auto function = read<uintptr_t>( entry + 0x18 + j * 0x8 );
 				if ( !function )
 					continue;
 
-				const auto mono_ptr = utils::globals::driver.read<uintptr_t>( function + 0x0 );
-				const auto jitted_ptr = utils::globals::driver.read<uintptr_t>( function + 0x10 );
+				const auto mono_ptr = read<uintptr_t>( function + 0x0 );
+				const auto jitted_ptr = read<uintptr_t>( function + 0x10 );
 				functions[mono_ptr] = jitted_ptr;
 			}
 		}
